@@ -1,5 +1,6 @@
 ﻿const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const cursorLight = document.querySelector(".cursor-light");
+const compactViewport = window.matchMedia("(max-width: 680px)");
 const flipCards = Array.from(document.querySelectorAll(".flip-card"));
 
 window.addEventListener("pointermove", (event) => {
@@ -20,7 +21,7 @@ flipCards.forEach((card) => {
   });
 
   frontLink?.addEventListener("click", (event) => {
-    if (window.matchMedia("(hover: none)").matches && !card.classList.contains("is-flipped")) {
+    if (window.matchMedia("(hover: none)").matches && !compactViewport.matches && !card.classList.contains("is-flipped")) {
       event.preventDefault();
       flipCards.forEach((item) => item.classList.toggle("is-flipped", item === card));
     }
@@ -207,18 +208,110 @@ document.querySelectorAll(".detail-jump").forEach((link) => {
 });
 function setupPortfolioPlayer(player) {
   const slides = Array.from(player.querySelectorAll(".player-slide"));
+  const stage = player.querySelector(".player-stage");
   const counter = player.querySelector(".player-counter");
   const previous = player.querySelector('[data-action="prev"]');
   const next = player.querySelector('[data-action="next"]');
   let active = 0;
+  let loadRequest = 0;
 
-  function render(index) {
+  if (!slides.length || !stage) return;
+
+  const status = document.createElement("p");
+  status.className = "player-status";
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  stage.appendChild(status);
+
+  slides.forEach((slide, slideIndex) => {
+    slide.decoding = "async";
+    slide.setAttribute("aria-hidden", String(slideIndex !== 0));
+
+    if (slideIndex !== 0) {
+      const source = slide.getAttribute("src");
+      if (source) {
+        slide.dataset.src = source;
+        slide.removeAttribute("src");
+      }
+      slide.removeAttribute("loading");
+    } else {
+      slide.loading = "eager";
+      slide.fetchPriority = "high";
+    }
+  });
+
+  function setBusy(busy, message = "") {
+    player.classList.toggle("is-loading", busy);
+    previous?.toggleAttribute("disabled", busy);
+    next?.toggleAttribute("disabled", busy);
+    status.textContent = message;
+  }
+
+  function loadSlide(slide, priority = "high") {
+    const source = slide.dataset.src || slide.getAttribute("src");
+    if (!source) return Promise.reject(new Error("missing image source"));
+    if (slide.complete && slide.naturalWidth > 0) return Promise.resolve(slide);
+
+    if (slide.complete && slide.naturalWidth === 0 && slide.getAttribute("src")) {
+      slide.removeAttribute("src");
+    }
+
+    slide.loading = "eager";
+    slide.fetchPriority = priority;
+
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        slide.removeEventListener("load", onLoad);
+        slide.removeEventListener("error", onError);
+      };
+      const onLoad = () => {
+        cleanup();
+        resolve(slide);
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error(`failed to load ${source}`));
+      };
+
+      slide.addEventListener("load", onLoad, { once: true });
+      slide.addEventListener("error", onError, { once: true });
+      if (slide.getAttribute("src") !== source) slide.src = source;
+    });
+  }
+
+  function preload(index) {
+    const target = slides[(index + slides.length) % slides.length];
+    if (!target || (target.complete && target.naturalWidth > 0)) return;
+    loadSlide(target, "low").catch(() => {});
+  }
+
+  async function render(index) {
+    const targetIndex = (index + slides.length) % slides.length;
+    if (targetIndex === active) return;
+
+    const target = slides[targetIndex];
     const previousActive = active;
-    active = (index + slides.length) % slides.length;
+    const request = ++loadRequest;
+    player.classList.remove("has-error");
+    setBusy(true, `正在载入 ${String(targetIndex + 1).padStart(2, "0")} / ${slides.length}`);
+
+    try {
+      await loadSlide(target);
+      if (target.decode) await target.decode().catch(() => {});
+      if (request !== loadRequest) return;
+    } catch (error) {
+      if (request !== loadRequest) return;
+      player.classList.add("has-error");
+      setBusy(false, "图片暂时未载入，请点击翻页按钮重试");
+      return;
+    }
+
+    active = targetIndex;
 
     slides.forEach((slide, slideIndex) => {
       slide.classList.toggle("is-active", slideIndex === active);
       slide.classList.toggle("is-leaving", slideIndex === previousActive && previousActive !== active);
+      slide.setAttribute("aria-hidden", String(slideIndex !== active));
       if (slideIndex !== previousActive) slide.classList.remove("is-leaving");
     });
 
@@ -227,12 +320,18 @@ function setupPortfolioPlayer(player) {
     }, 680);
 
     if (counter) counter.textContent = `${String(active + 1).padStart(2, "0")} / ${slides.length}`;
+    setBusy(false);
+    window.setTimeout(() => preload(active + 1), 180);
   }
 
   previous?.addEventListener("click", () => render(active - 1));
   next?.addEventListener("click", () => render(active + 1));
   slides.forEach((slide, slideIndex) => slide.classList.toggle("is-active", slideIndex === 0));
   if (counter) counter.textContent = `${String(active + 1).padStart(2, "0")} / ${slides.length}`;
+  loadSlide(slides[0]).then(() => preload(1)).catch(() => {
+    player.classList.add("has-error");
+    status.textContent = "首页图片暂时未载入，请刷新后重试";
+  });
 }
 
 document.querySelectorAll(".portfolio-player").forEach(setupPortfolioPlayer);
