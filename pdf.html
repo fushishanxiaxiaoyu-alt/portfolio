@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f6fa" />
+  <title>岳喜标｜作品集在线阅读</title>
+  <link rel="preload" as="image" href="./portfolio-pages/page-01.webp" fetchpriority="high" />
+  <style>
+    :root {
+      color-scheme: light;
+      --blue:#1677ff;
+      --blue-dark:#0f5fd6;
+      --ink:#111827;
+      --muted:#637083;
+      --line:#d8e1ec;
+      --surface:#ffffff;
+      --canvas:#edf2f7;
+      --header:rgba(255,255,255,.94);
+      --shadow:0 14px 40px rgba(34,57,91,.12);
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; min-height:100dvh; background:var(--canvas); color:var(--ink); font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif; }
+    header { position:sticky; top:0; z-index:10; border-bottom:1px solid var(--line); background:var(--header); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+    .bar { width:min(100%,1320px); min-height:64px; margin:0 auto; padding:10px 20px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:16px; }
+    .title { min-width:0; }
+    .title strong { display:block; overflow:hidden; color:var(--ink); font-size:15px; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
+    .title span { display:block; margin-top:2px; color:var(--muted); font-size:11px; }
+    .counter { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .actions { justify-self:end; display:flex; align-items:center; gap:8px; }
+    .action { min-height:38px; display:inline-flex; align-items:center; justify-content:center; padding:0 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); font-size:12px; font-weight:700; text-decoration:none; white-space:nowrap; }
+    .action.primary { border-color:var(--blue); background:var(--blue); color:#fff; }
+    .action:active { transform:translateY(1px); }
+    main { width:min(100%,1320px); margin:0 auto; padding:24px 20px 64px; }
+    .notice { margin:0 auto 18px; padding:11px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--muted); font-size:12px; line-height:1.6; text-align:center; }
+    .pages { display:grid; gap:20px; }
+    .page { width:100%; aspect-ratio:1280 / 700.4724; margin:0; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#e3eaf2; box-shadow:var(--shadow); }
+    .page img { display:block; width:100%; height:100%; object-fit:contain; background:var(--surface); }
+    .page img.is-error { opacity:0; }
+    .error { display:none; height:100%; place-items:center; padding:24px; color:var(--muted); text-align:center; }
+    .page.has-error .error { display:grid; }
+    .page.has-error img { display:none; }
+    noscript { display:block; margin:20px; padding:18px; border:1px solid #f1b8b8; border-radius:12px; background:#fff3f3; color:#862828; }
+    @media (max-width:720px) {
+      .bar { min-height:58px; padding:8px 12px; grid-template-columns:minmax(0,1fr) auto; }
+      .counter { display:none; }
+      .title span { display:none; }
+      .actions { gap:6px; }
+      .action { min-height:36px; padding:0 10px; border-radius:10px; font-size:11px; }
+      main { padding:12px 8px 44px; }
+      .notice { margin-bottom:10px; padding:9px 10px; border-radius:10px; }
+      .pages { gap:10px; }
+      .page { border-radius:8px; box-shadow:0 8px 24px rgba(34,57,91,.10); }
+    }
+    @media (prefers-color-scheme:dark) {
+      :root { --ink:#edf3fb; --muted:#a9b6c8; --line:#334155; --surface:#182231; --canvas:#0f1722; --header:rgba(15,23,34,.94); --shadow:0 14px 40px rgba(0,0,0,.28); }
+      .action.primary { color:#fff; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="title"><strong>岳喜标的个人作品集</strong><span>在线阅读 · 共 44 页</span></div>
+      <div class="counter" id="counter" aria-live="polite">第 1 / 44 页</div>
+      <nav class="actions" aria-label="作品集操作">
+        <a class="action" href="./view.html">返回入口</a>
+        <a class="action primary" href="./portfolio.pdf" download>下载原PDF</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <p class="notice">图片会随滚动逐页加载。无需下载即可浏览全部作品。</p>
+    <div class="pages" id="pages" aria-label="作品集页面"></div>
+    <noscript>当前浏览器已关闭 JavaScript。请启用后在线阅读，或使用上方按钮下载原PDF。</noscript>
+  </main>
+  <script>
+    const total = 44;
+    const pages = document.getElementById('pages');
+    const counter = document.getElementById('counter');
+    const fragment = document.createDocumentFragment();
+
+    for (let pageNumber = 1; pageNumber <= total; pageNumber += 1) {
+      const figure = document.createElement('figure');
+      figure.className = 'page';
+      figure.dataset.page = String(pageNumber);
+
+      const image = document.createElement('img');
+      image.src = `./portfolio-pages/page-${String(pageNumber).padStart(2, '0')}.webp`;
+      image.alt = `岳喜标个人作品集第 ${pageNumber} 页`;
+      image.width = 1280;
+      image.height = 700;
+      image.decoding = 'async';
+      if (pageNumber === 1) {
+        image.loading = 'eager';
+        image.fetchPriority = 'high';
+      } else {
+        image.loading = 'lazy';
+      }
+
+      const error = document.createElement('div');
+      error.className = 'error';
+      error.textContent = `第 ${pageNumber} 页加载失败，请检查网络后刷新页面。`;
+      image.addEventListener('error', () => figure.classList.add('has-error'), { once: true });
+
+      figure.append(image, error);
+      fragment.append(figure);
+    }
+    pages.append(fragment);
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) counter.textContent = `第 ${visible.target.dataset.page} / ${total} 页`;
+    }, { rootMargin: '-20% 0px -60% 0px', threshold: [0, .25, .5, .75, 1] });
+
+    document.querySelectorAll('.page').forEach((page) => observer.observe(page));
+  </script>
+</body>
+</html>
